@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 
 @dataclass
-class PetProfile:
+class Pet:
 	pet_id: int
 	name: str
 	species: str
@@ -30,6 +30,11 @@ class Task:
 	priority: str
 	time_constraint: str = ""
 	cost: float = 0.0
+	completed: bool = False
+
+	def mark_complete(self) -> None:
+		# Idempotent by design: once complete, repeated calls keep it complete.
+		self.completed = True
 
 	def is_high_priority(self) -> bool:
 		return self.priority.strip().lower() == "high"
@@ -45,24 +50,24 @@ class Customer:
 	contact_info: str
 	preferred_time_windows: str = ""
 	care_preferences: str = ""
-	pets: list[PetProfile] = field(default_factory=list)
+	pets: list[Pet] = field(default_factory=list)
 	schedules: list[DailySchedule] = field(default_factory=list)
 	requested_pickup_time: datetime | None = None
 	requested_dropoff_time: datetime | None = None
 
-	def add_pet(self, pet: PetProfile) -> None:
+	def add_pet(self, pet: Pet) -> None:
 		if any(existing.pet_id == pet.pet_id for existing in self.pets):
 			raise ValueError(f"Pet with id {pet.pet_id} already exists for this customer")
 		self.pets.append(pet)
 
-	def owns_pet(self, pet: PetProfile) -> bool:
+	def owns_pet(self, pet: Pet) -> bool:
 		return any(existing.pet_id == pet.pet_id for existing in self.pets)
 
 	def create_schedule(
 		self,
 		schedule_date: date,
 		available_windows: str,
-		planned_for: PetProfile,
+		planned_for: Pet,
 		pickup_time: datetime | None = None,
 		dropoff_time: datetime | None = None,
 	) -> DailySchedule:
@@ -95,7 +100,7 @@ class Customer:
 class DailySchedule:
 	schedule_date: date
 	available_windows: str
-	planned_for: PetProfile
+	planned_for: Pet
 	customer_id: int
 	pickup_time: datetime | None = None
 	dropoff_time: datetime | None = None
