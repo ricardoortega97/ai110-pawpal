@@ -3,3 +3,31 @@ __pycache__/
 .venv_new/
 .pytest_cache/
 .DS_Store
+
+# AI Folders
+.claude/*
+claude.md
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# OS
+Thumbs.db
+
+# Remote repo files
+.git/

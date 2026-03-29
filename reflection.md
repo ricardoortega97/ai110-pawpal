@@ -5,12 +5,104 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+    **Response:** The diagram consists of four classes. The schedule tracks date and time windows for care appointments, including pickup and dropoff times. The customer info class stores owner details and preferences and connects to pet info, which stores the pet profile and care notes. The task class models each care activity with duration, priority, and cost so it can be scheduled effectively.
+
 - What classes did you include, and what responsibilities did you assign to each?
+    **Response:** Classes 
+        - Class: Customer Info
+            + int customer_id
+            + str name
+            + str contact_info 
+            + str preference
+            + add_pet()
+            + update_preference()
+            + request_pickup() 
+            + request_dropoff()
+        - Pet Info 
+            + int pet_id 
+            + str name
+            + str type (dog, cat)
+            + int age
+            + string medications
+        - Tasks
+            + int task_id
+            + string title
+            + int duration_minutes 
+            + is_priority()
+            + float cost
+        - Schedule
+            + date date
+            + string windows
+            + datetime pickup_time
+            + datetime dropoff_time
+            + int total_mins
+            + float total_cost
+
+### Mermaid Class Diagram (Refined UML)
+
+```mermaid
+classDiagram
+    class Customer {
+        +int customer_id
+        +string name
+        +string contact_info
+        +string preferred_time_windows
+        +string care_preferences
+        +add_pet(pet: PetProfile)
+        +update_preferences(time_windows: string, care_notes: string)
+        +request_pickup(preferred_time: datetime)
+        +request_dropoff(preferred_time: datetime)
+    }
+
+    class PetProfile {
+        +int pet_id
+        +string name
+        +string species
+        +int age
+        +string medications
+        +string special_care_notes
+        +is_senior() bool
+        +requires_medication() bool
+    }
+
+    class Task {
+        +int task_id
+        +string title
+        +int duration_minutes
+        +string priority
+        +string time_constraint
+        +float cost
+        +is_high_priority() bool
+        +is_time_constrained() bool
+    }
+
+    class DailySchedule {
+        +date schedule_date
+        +string available_windows
+        +datetime pickup_time
+        +datetime dropoff_time
+        +int total_minutes_used
+        +float total_cost
+        +add_task(task: Task) bool
+        +sort_tasks_by_priority()
+        +calculate_total_minutes() int
+        +calculate_total_cost() float
+        +validate_time_constraints() bool
+    }
+
+    Customer "1" --> "1..*" PetProfile : owns
+    Customer "1" --> "1..*" DailySchedule : requests
+    DailySchedule "1" --> "1" PetProfile : planned_for
+    DailySchedule "1" --> "1..*" Task : schedules
+```
 
 **b. Design changes**
 
 - Did your design change during implementation?
+    **Response:** I started with five classes for the diagram, but then I noticed we can reduce it to four classes to keep it minimal and simple to understand the scope of the app. One thing I did forgot to implement on my draft was the id for each, as it will make it more simple to connect. 
+
 - If yes, describe at least one change and why you made it.
+    **Response:** With the agent, it added more details of how the class diagram should be structured. There are more methods and attributes added that does make sense. We went from five to four for a more clearer diagram and added some methods into the customer's class. 
 
 ---
 
