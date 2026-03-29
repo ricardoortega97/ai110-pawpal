@@ -54,7 +54,7 @@ classDiagram
         +request_dropoff(preferred_time: datetime)
     }
 
-    class PetProfile {
+    class Pet {
         +int pet_id
         +string name
         +string species
@@ -76,7 +76,7 @@ classDiagram
         +is_time_constrained() bool
     }
 
-    class DailySchedule {
+    class Scheduler {
         +date schedule_date
         +string available_windows
         +datetime pickup_time
@@ -111,12 +111,18 @@ classDiagram
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
+    **Response:** The task has a boolean to determine if it is a priority or not. We may want to have a priority if the pet has a medical needs to ensure no bad outcome. The scheduler focus more on time to ensure we can meet the availability to complete as many services as needed for the shift. 
+
 - How did you decide which constraints mattered most?
+    **Response:** I believe that priority would be the most important if we want to keep customers satisfied with the owner's services and bring returning customers along with building rapport. 
 
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+    **Response:** Currently, the simplicity of the schedule accepts even there is conflicted with the time window, so will need to adjust this to ensure it will not go over the schedule. This is manual ordering, in where it will not adjust to the best time practices. Highly will implement a feature that will automatically adjust the slots.
+
 - Why is that tradeoff reasonable for this scenario?
+    **Response:** Clarity on the task that adds totals from the full task list. Since this is a small business, there is no need to implement complexity, unless it is needed scale. 
 
 ---
 
