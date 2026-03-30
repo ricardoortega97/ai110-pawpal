@@ -1,64 +1,14 @@
 from datetime import date, datetime
 
 from pawpal_system import Customer, Pet, Task
-
-
-def print_schedule(owner: Customer, target_date: date) -> None:
-	print(f"\nPawPal Daily Schedule for {owner.name} ({target_date.isoformat()})")
-	print("=" * 60)
-
-	matching_schedules = [
-		schedule for schedule in owner.schedules if schedule.schedule_date == target_date
-	]
-
-	if not matching_schedules:
-		print("No schedules found for today.")
-		return
-
-	for schedule in matching_schedules:
-		pet = schedule.planned_for
-		print(f"\nPet: {pet.name} ({pet.species}, age {pet.age})")
-		print(f"Available Window: {schedule.available_windows}")
-		print(f"Tasks ({len(schedule.tasks)}):")
-
-		schedule.sort_tasks_by_time()
-		for task in schedule.tasks:
-			print(
-				f"  - [{task.priority.upper()}] {task.title} | "
-				f"{task.duration_minutes} min | time: {task.time_constraint} | ${task.cost:.2f}"
-			)
-
-		print(f"Total Minutes: {schedule.total_minutes_used}")
-		print(f"Total Cost: ${schedule.total_cost:.2f}")
-
-
-def print_filtered_tasks(owner: Customer) -> None:
-	print("\nFiltered Views")
-	print("-" * 60)
-
-	incomplete_tasks = owner.filter_tasks(completed=False)
-	print(f"Incomplete Tasks ({len(incomplete_tasks)}):")
-	for task in incomplete_tasks:
-		print(f"  - {task.title} ({task.time_constraint or 'No time set'})")
-
-	mochi_tasks = owner.filter_tasks(pet_name="Mochi")
-	print(f"\nTasks for Mochi ({len(mochi_tasks)}):")
-	for task in mochi_tasks:
-		status = "done" if task.completed else "pending"
-		print(f"  - {task.title} [{status}] at {task.time_constraint or 'No time set'}")
-
-
-def print_conflict_warnings(owner: Customer) -> None:
-	print("\nConflict Check")
-	print("-" * 60)
-
-	warnings = owner.schedules[0].detect_time_conflicts_with(owner.schedules[1:])
-	if not warnings:
-		print("No scheduling conflicts detected.")
-		return
-
-	for warning in warnings:
-		print(warning)
+from formatting import (
+	print_schedule,
+	print_filtered_tasks,
+	print_conflict_warnings,
+	print_pet_summary,
+	Colors,
+	Emojis,
+)
 
 
 def main() -> None:
@@ -143,9 +93,13 @@ def main() -> None:
 	# Mark one task complete so completion filtering has visible results.
 	dog_schedule.tasks[1].mark_complete()
 
+	# Display formatted output
+	print_pet_summary(owner)
 	print_schedule(owner, today)
 	print_filtered_tasks(owner)
 	print_conflict_warnings(owner)
+	
+	print(f"\n{Colors.SUCCESS}✨ Schedule generation complete!{Colors.RESET}\n")
 
 
 if __name__ == "__main__":

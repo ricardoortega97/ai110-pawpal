@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Sequence
 
 
@@ -146,6 +148,148 @@ class Customer:
 				filtered_tasks.append(task)
 
 		return filtered_tasks
+
+	# ── persistence ───────────────────────────────────────────────────────────
+
+	def save_to_json(self, path: str) -> None:
+		"""Serialise this customer, their pets, and all schedules/tasks to a JSON file."""
+
+		def _date_to_str(d: date | None) -> str | None:
+			return d.isoformat() if d is not None else None
+
+		def _datetime_to_str(dt: datetime | None) -> str | None:
+			return dt.isoformat() if dt is not None else None
+
+		pets_data = [
+			{
+				"pet_id": pet.pet_id,
+				"name": pet.name,
+				"species": pet.species,
+				"age": pet.age,
+				"medications": pet.medications,
+				"special_care_notes": pet.special_care_notes,
+			}
+			for pet in self.pets
+		]
+
+		schedules_data = []
+		for schedule in self.schedules:
+			tasks_data = [
+				{
+					"task_id": task.task_id,
+					"title": task.title,
+					"duration_minutes": task.duration_minutes,
+					"priority": task.priority,
+					"time_constraint": task.time_constraint,
+					"cost": task.cost,
+					"completed": task.completed,
+					"recurrence": task.recurrence,
+					"scheduled_for": _date_to_str(task.scheduled_for),
+					"recurrence_generated": task.recurrence_generated,
+				}
+				for task in schedule.tasks
+			]
+			schedules_data.append(
+				{
+					"schedule_date": schedule.schedule_date.isoformat(),
+					"available_windows": schedule.available_windows,
+					"planned_for_pet_id": schedule.planned_for.pet_id,
+					"pickup_time": _datetime_to_str(schedule.pickup_time),
+					"dropoff_time": _datetime_to_str(schedule.dropoff_time),
+					"tasks": tasks_data,
+				}
+			)
+
+		payload = {
+			"customer_id": self.customer_id,
+			"name": self.name,
+			"contact_info": self.contact_info,
+			"preferred_time_windows": self.preferred_time_windows,
+			"care_preferences": self.care_preferences,
+			"pets": pets_data,
+			"schedules": schedules_data,
+		}
+
+		Path(path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+	@classmethod
+	def load_from_json(cls, path: str) -> Customer:
+		"""Deserialise a Customer (with pets and schedules) from a JSON file.
+
+		Raises FileNotFoundError if the file does not exist, and ValueError if
+		the JSON is empty or malformed.  The caller is responsible for handling
+		these exceptions.
+		"""
+		raw = Path(path).read_text(encoding="utf-8").strip()
+		if not raw:
+			raise ValueError(f"JSON file is empty: {path}")
+
+		data = json.loads(raw)
+
+		pets = [
+			Pet(
+				pet_id=p["pet_id"],
+				name=p["name"],
+				species=p["species"],
+				age=p["age"],
+				medications=p.get("medications", ""),
+				special_care_notes=p.get("special_care_notes", ""),
+			)
+			for p in data.get("pets", [])
+		]
+		pets_by_id: dict[int, Pet] = {pet.pet_id: pet for pet in pets}
+
+		customer = cls(
+			customer_id=data["customer_id"],
+			name=data["name"],
+			contact_info=data.get("contact_info", ""),
+			preferred_time_windows=data.get("preferred_time_windows", ""),
+			care_preferences=data.get("care_preferences", ""),
+			pets=pets,
+		)
+
+		def _parse_datetime(value: str | None) -> datetime | None:
+			return datetime.fromisoformat(value) if value else None
+
+		def _parse_date(value: str | None) -> date | None:
+			return date.fromisoformat(value) if value else None
+
+		for sched_data in data.get("schedules", []):
+			pet_id = sched_data["planned_for_pet_id"]
+			planned_for = pets_by_id.get(pet_id)
+			if planned_for is None:
+				# Skip orphaned schedules whose pet no longer exists.
+				continue
+
+			schedule = Scheduler(
+				schedule_date=date.fromisoformat(sched_data["schedule_date"]),
+				available_windows=sched_data.get("available_windows", ""),
+				planned_for=planned_for,
+				customer_id=customer.customer_id,
+				pickup_time=_parse_datetime(sched_data.get("pickup_time")),
+				dropoff_time=_parse_datetime(sched_data.get("dropoff_time")),
+			)
+
+			for task_data in sched_data.get("tasks", []):
+				task = Task(
+					task_id=task_data["task_id"],
+					title=task_data["title"],
+					duration_minutes=task_data["duration_minutes"],
+					priority=task_data["priority"],
+					time_constraint=task_data.get("time_constraint", ""),
+					cost=task_data.get("cost", 0.0),
+					completed=task_data.get("completed", False),
+					recurrence=task_data.get("recurrence", ""),
+					scheduled_for=_parse_date(task_data.get("scheduled_for")),
+					recurrence_generated=task_data.get("recurrence_generated", False),
+				)
+				# Bypass add_task validation to faithfully restore persisted state.
+				schedule.tasks.append(task)
+
+			schedule.refresh_totals()
+			customer.schedules.append(schedule)
+
+		return customer
 
 
 @dataclass

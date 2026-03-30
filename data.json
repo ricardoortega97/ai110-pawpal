@@ -1,0 +1,42 @@
+[
+  {
+    "customer_id": 1,
+    "name": "Jordan",
+    "contact_info": "",
+    "preferred_time_windows": "",
+    "care_preferences": "",
+    "pets": [
+      {
+        "pet_id": 1,
+        "name": "Mochi",
+        "species": "dog",
+        "age": 1,
+        "medications": "",
+        "special_care_notes": ""
+      }
+    ],
+    "schedules": [
+      {
+        "schedule_date": "2026-03-29",
+        "available_windows": "Flexible",
+        "planned_for_pet_id": 1,
+        "pickup_time": null,
+        "dropoff_time": null,
+        "tasks": [
+          {
+            "task_id": 1,
+            "title": "Morning walk",
+            "duration_minutes": 20,
+            "priority": "high",
+            "time_constraint": "",
+            "cost": 0.0,
+            "completed": false,
+            "recurrence": "",
+            "scheduled_for": "2026-03-29",
+            "recurrence_generated": false
+          }
+        ]
+      }
+    ]
+  }
+]
