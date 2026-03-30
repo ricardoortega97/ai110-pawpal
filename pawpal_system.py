@@ -51,7 +51,7 @@ class Customer:
 	preferred_time_windows: str = ""
 	care_preferences: str = ""
 	pets: list[Pet] = field(default_factory=list)
-	schedules: list[DailySchedule] = field(default_factory=list)
+	schedules: list[Scheduler] = field(default_factory=list)
 	requested_pickup_time: datetime | None = None
 	requested_dropoff_time: datetime | None = None
 
@@ -70,11 +70,11 @@ class Customer:
 		planned_for: Pet,
 		pickup_time: datetime | None = None,
 		dropoff_time: datetime | None = None,
-	) -> DailySchedule:
+	) -> Scheduler:
 		if not self.owns_pet(planned_for):
 			raise ValueError("Cannot create schedule for a pet not owned by this customer")
 
-		schedule = DailySchedule(
+		schedule = Scheduler(
 			schedule_date=schedule_date,
 			available_windows=available_windows,
 			planned_for=planned_for,
@@ -95,9 +95,28 @@ class Customer:
 	def request_dropoff(self, preferred_time: datetime) -> None:
 		self.requested_dropoff_time = preferred_time
 
+	def filter_tasks(
+		self,
+		completed: bool | None = None,
+		pet_name: str | None = None,
+	) -> list[Task]:
+		filtered_tasks: list[Task] = []
+		normalized_pet_name = pet_name.strip().lower() if pet_name else None
+
+		for schedule in self.schedules:
+			if normalized_pet_name and schedule.planned_for.name.strip().lower() != normalized_pet_name:
+				continue
+
+			for task in schedule.tasks:
+				if completed is not None and task.completed != completed:
+					continue
+				filtered_tasks.append(task)
+
+		return filtered_tasks
+
 
 @dataclass
-class DailySchedule:
+class Scheduler:
 	schedule_date: date
 	available_windows: str
 	planned_for: Pet
@@ -127,6 +146,20 @@ class DailySchedule:
 		self.tasks.sort(
 			key=lambda task: priority_order.get(task.priority.strip().lower(), 3)
 		)
+
+	@staticmethod
+	def sort_by_time(tasks: list[Task]) -> list[Task]:
+		# Keep tasks without a time constraint at the end of the list.
+		tasks.sort(
+			key=lambda task: (
+				task.time_constraint.strip() == "",
+				task.time_constraint.strip() if task.time_constraint.strip() else "99:99",
+			)
+		)
+		return tasks
+
+	def sort_tasks_by_time(self) -> None:
+		Scheduler.sort_by_time(self.tasks)
 
 	def calculate_total_minutes(self) -> int:
 		return sum(task.duration_minutes for task in self.tasks)

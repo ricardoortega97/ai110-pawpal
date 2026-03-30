@@ -21,7 +21,7 @@ def print_schedule(owner: Customer, target_date: date) -> None:
 		print(f"Available Window: {schedule.available_windows}")
 		print(f"Tasks ({len(schedule.tasks)}):")
 
-		schedule.sort_tasks_by_priority()
+		schedule.sort_tasks_by_time()
 		for task in schedule.tasks:
 			print(
 				f"  - [{task.priority.upper()}] {task.title} | "
@@ -30,6 +30,22 @@ def print_schedule(owner: Customer, target_date: date) -> None:
 
 		print(f"Total Minutes: {schedule.total_minutes_used}")
 		print(f"Total Cost: ${schedule.total_cost:.2f}")
+
+
+def print_filtered_tasks(owner: Customer) -> None:
+	print("\nFiltered Views")
+	print("-" * 60)
+
+	incomplete_tasks = owner.filter_tasks(completed=False)
+	print(f"Incomplete Tasks ({len(incomplete_tasks)}):")
+	for task in incomplete_tasks:
+		print(f"  - {task.title} ({task.time_constraint or 'No time set'})")
+
+	mochi_tasks = owner.filter_tasks(pet_name="Mochi")
+	print(f"\nTasks for Mochi ({len(mochi_tasks)}):")
+	for task in mochi_tasks:
+		status = "done" if task.completed else "pending"
+		print(f"  - {task.title} [{status}] at {task.time_constraint or 'No time set'}")
 
 
 def main() -> None:
@@ -59,10 +75,20 @@ def main() -> None:
 		dropoff_time=datetime.combine(today, datetime.strptime("17:00", "%H:%M").time()),
 	)
 
-	# Add at least three tasks with different times across pets.
+	# Add tasks out of chronological order to verify time-based sorting.
 	dog_schedule.add_task(
 		Task(
 			task_id=1,
+			title="Breakfast Feeding",
+			duration_minutes=15,
+			priority="medium",
+			time_constraint="09:45",
+			cost=4.0,
+		)
+	)
+	dog_schedule.add_task(
+		Task(
+			task_id=2,
 			title="Morning Walk",
 			duration_minutes=30,
 			priority="high",
@@ -72,17 +98,27 @@ def main() -> None:
 	)
 	dog_schedule.add_task(
 		Task(
-			task_id=2,
-			title="Breakfast Feeding",
-			duration_minutes=15,
-			priority="medium",
-			time_constraint="09:45",
-			cost=4.0,
+			task_id=3,
+			title="Water Refill",
+			duration_minutes=5,
+			priority="low",
+			time_constraint="08:30",
+			cost=1.0,
 		)
 	)
 	cat_schedule.add_task(
 		Task(
-			task_id=3,
+			task_id=4,
+			title="Litter Scoop",
+			duration_minutes=10,
+			priority="medium",
+			time_constraint="16:00",
+			cost=3.0,
+		)
+	)
+	cat_schedule.add_task(
+		Task(
+			task_id=5,
 			title="Medication",
 			duration_minutes=10,
 			priority="high",
@@ -91,7 +127,11 @@ def main() -> None:
 		)
 	)
 
+	# Mark one task complete so completion filtering has visible results.
+	dog_schedule.tasks[1].mark_complete()
+
 	print_schedule(owner, today)
+	print_filtered_tasks(owner)
 
 
 if __name__ == "__main__":
