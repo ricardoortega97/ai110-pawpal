@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from typing import Sequence
 
 
 @dataclass
@@ -31,6 +32,9 @@ class Task:
 	time_constraint: str = ""
 	cost: float = 0.0
 	completed: bool = False
+	recurrence: str = ""
+	scheduled_for: date | None = None
+	recurrence_generated: bool = False
 
 	def mark_complete(self) -> None:
 		# Idempotent by design: once complete, repeated calls keep it complete.
@@ -41,6 +45,35 @@ class Task:
 
 	def is_time_constrained(self) -> bool:
 		return bool(self.time_constraint.strip())
+
+	def recurrence_interval_days(self) -> int:
+		recurrence_type = self.recurrence.strip().lower()
+		if recurrence_type == "daily":
+			return 1
+		if recurrence_type == "weekly":
+			return 7
+		return 0
+
+	def create_next_occurrence(self, next_task_id: int, base_date: date) -> Task | None:
+		interval_days = self.recurrence_interval_days()
+		if interval_days <= 0 or self.recurrence_generated:
+			return None
+
+		source_date = self.scheduled_for or base_date
+		next_date = source_date + timedelta(days=interval_days)
+		self.recurrence_generated = True
+
+		return Task(
+			task_id=next_task_id,
+			title=self.title,
+			duration_minutes=self.duration_minutes,
+			priority=self.priority,
+			time_constraint=self.time_constraint,
+			cost=self.cost,
+			completed=False,
+			recurrence=self.recurrence,
+			scheduled_for=next_date,
+		)
 
 
 @dataclass
@@ -136,10 +169,78 @@ class Scheduler:
 		if task.duration_minutes <= 0 or task.cost < 0:
 			return False
 
+		if task.scheduled_for is None:
+			task.scheduled_for = self.schedule_date
+
 		self.tasks.append(task)
 		self.total_minutes_used += task.duration_minutes
 		self.total_cost += task.cost
 		return True
+
+	def _next_task_id(self) -> int:
+		if not self.tasks:
+			return 1
+		return max(task.task_id for task in self.tasks) + 1
+
+	def mark_task_complete(self, task_id: int) -> Task | None:
+		for task in self.tasks:
+			if task.task_id != task_id:
+				continue
+
+			task.mark_complete()
+			next_task = task.create_next_occurrence(
+				next_task_id=self._next_task_id(),
+				base_date=self.schedule_date,
+			)
+			if next_task is not None:
+				self.add_task(next_task)
+			return next_task
+
+		return None
+
+	def detect_time_conflicts_with(self, other_schedules: Sequence[Scheduler] | None = None) -> list[str]:
+		schedules_to_check: list[Scheduler] = [self]
+		if other_schedules:
+			schedules_to_check.extend(other_schedules)
+		return Scheduler.detect_time_conflicts(schedules_to_check)
+
+	@staticmethod
+	def detect_time_conflicts(schedules: Sequence[Scheduler]) -> list[str]:
+		warnings: list[str] = []
+		tasks_by_slot: dict[tuple[date, str], list[tuple[str, str]]] = {}
+
+		for schedule in schedules:
+			for task in schedule.tasks:
+				time_text = task.time_constraint.strip()
+				if not time_text:
+					continue
+
+				try:
+					datetime.strptime(time_text, "%H:%M")
+				except ValueError:
+					warnings.append(
+						f"Warning: Invalid time '{task.time_constraint}' for task '{task.title}' on pet '{schedule.planned_for.name}'."
+					)
+					continue
+
+				slot_date = task.scheduled_for or schedule.schedule_date
+				slot_key = (slot_date, time_text)
+				tasks_by_slot.setdefault(slot_key, []).append(
+					(schedule.planned_for.name, task.title)
+				)
+
+		for (slot_date, time_text), entries in sorted(tasks_by_slot.items()):
+			if len(entries) < 2:
+				continue
+
+			entry_text = ", ".join(
+				f"{pet_name}:{task_title}" for pet_name, task_title in entries
+			)
+			warnings.append(
+				f"Warning: Time conflict at {slot_date.isoformat()} {time_text} -> {entry_text}"
+			)
+
+		return warnings
 
 	def sort_tasks_by_priority(self) -> None:
 		priority_order = {"high": 0, "medium": 1, "low": 2}

@@ -6,7 +6,7 @@ import sys
 # Allow imports from the project root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from datetime import date
+from datetime import date, timedelta
 
 from pawpal_system import Customer, Pet, Scheduler, Task
 
@@ -105,3 +105,120 @@ def test_customer_filter_tasks_by_completion_or_pet_name():
 
     mochi_tasks = owner.filter_tasks(pet_name="Mochi")
     assert [task.title for task in mochi_tasks] == ["Walk", "Feed"]
+
+
+def test_mark_task_complete_creates_next_daily_occurrence():
+    owner = Customer(customer_id=1, name="Jordan", contact_info="jordan@email.com")
+    pet = Pet(pet_id=101, name="Mochi", species="dog", age=4)
+    owner.add_pet(pet)
+
+    schedule = owner.create_schedule(
+        schedule_date=date.today(),
+        available_windows="08:00-12:00",
+        planned_for=pet,
+    )
+    schedule.add_task(
+        Task(
+            task_id=1,
+            title="Medication",
+            duration_minutes=10,
+            priority="high",
+            time_constraint="09:00",
+            recurrence="daily",
+        )
+    )
+
+    next_task = schedule.mark_task_complete(task_id=1)
+
+    assert next_task is not None
+    assert next_task.task_id == 2
+    assert next_task.recurrence == "daily"
+    assert next_task.completed is False
+    assert next_task.scheduled_for == schedule.schedule_date + timedelta(days=1)
+
+
+def test_mark_task_complete_creates_next_weekly_occurrence():
+    owner = Customer(customer_id=1, name="Jordan", contact_info="jordan@email.com")
+    pet = Pet(pet_id=101, name="Mochi", species="dog", age=4)
+    owner.add_pet(pet)
+
+    schedule = owner.create_schedule(
+        schedule_date=date.today(),
+        available_windows="08:00-12:00",
+        planned_for=pet,
+    )
+    schedule.add_task(
+        Task(
+            task_id=1,
+            title="Grooming",
+            duration_minutes=40,
+            priority="medium",
+            time_constraint="10:00",
+            recurrence="weekly",
+        )
+    )
+
+    next_task = schedule.mark_task_complete(task_id=1)
+
+    assert next_task is not None
+    assert next_task.task_id == 2
+    assert next_task.recurrence == "weekly"
+    assert next_task.completed is False
+    assert next_task.scheduled_for == schedule.schedule_date + timedelta(days=7)
+
+
+def test_detect_time_conflicts_for_same_pet_schedule():
+    owner = Customer(customer_id=1, name="Jordan", contact_info="jordan@email.com")
+    pet = Pet(pet_id=101, name="Mochi", species="dog", age=4)
+    owner.add_pet(pet)
+
+    schedule = owner.create_schedule(
+        schedule_date=date.today(),
+        available_windows="08:00-12:00",
+        planned_for=pet,
+    )
+    schedule.add_task(
+        Task(task_id=1, title="Morning Walk", duration_minutes=30, priority="high", time_constraint="09:00")
+    )
+    schedule.add_task(
+        Task(task_id=2, title="Feeding", duration_minutes=15, priority="medium", time_constraint="09:00")
+    )
+
+    warnings = schedule.detect_time_conflicts_with()
+
+    assert len(warnings) == 1
+    assert "Warning: Time conflict" in warnings[0]
+    assert "Mochi:Morning Walk" in warnings[0]
+    assert "Mochi:Feeding" in warnings[0]
+
+
+def test_detect_time_conflicts_for_different_pets():
+    owner = Customer(customer_id=1, name="Jordan", contact_info="jordan@email.com")
+    dog = Pet(pet_id=101, name="Mochi", species="dog", age=4)
+    cat = Pet(pet_id=102, name="Nova", species="cat", age=9)
+    owner.add_pet(dog)
+    owner.add_pet(cat)
+
+    dog_schedule = owner.create_schedule(
+        schedule_date=date.today(),
+        available_windows="08:00-12:00",
+        planned_for=dog,
+    )
+    cat_schedule = owner.create_schedule(
+        schedule_date=date.today(),
+        available_windows="13:00-18:00",
+        planned_for=cat,
+    )
+    dog_schedule.add_task(
+        Task(task_id=1, title="Walk", duration_minutes=30, priority="high", time_constraint="14:00")
+    )
+    cat_schedule.add_task(
+        Task(task_id=2, title="Medication", duration_minutes=10, priority="high", time_constraint="14:00")
+    )
+
+    warnings = dog_schedule.detect_time_conflicts_with([cat_schedule])
+
+    assert len(warnings) == 1
+    assert "Warning: Time conflict" in warnings[0]
+    assert "Mochi:Walk" in warnings[0]
+    assert "Nova:Medication" in warnings[0]

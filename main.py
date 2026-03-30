@@ -48,6 +48,19 @@ def print_filtered_tasks(owner: Customer) -> None:
 		print(f"  - {task.title} [{status}] at {task.time_constraint or 'No time set'}")
 
 
+def print_conflict_warnings(owner: Customer) -> None:
+	print("\nConflict Check")
+	print("-" * 60)
+
+	warnings = owner.schedules[0].detect_time_conflicts_with(owner.schedules[1:])
+	if not warnings:
+		print("No scheduling conflicts detected.")
+		return
+
+	for warning in warnings:
+		print(warning)
+
+
 def main() -> None:
 	today = date.today()
 
@@ -122,7 +135,7 @@ def main() -> None:
 			title="Medication",
 			duration_minutes=10,
 			priority="high",
-			time_constraint="14:00",
+			time_constraint="09:00",
 			cost=6.5,
 		)
 	)
@@ -132,6 +145,7 @@ def main() -> None:
 
 	print_schedule(owner, today)
 	print_filtered_tasks(owner)
+	print_conflict_warnings(owner)
 
 
 if __name__ == "__main__":
