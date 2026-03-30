@@ -131,11 +131,16 @@ classDiagram
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
+    **Response:** Definitely had it assist me with the brainstorming the system designing as I have not been practicing on this. Getting the trade offs of each feature helped me understand what could be needed for an app that does not require too much depth of complexity. There was some trail and error but the limitation of my time for this prevented me to look into the code and review it a few times. 
+
 - What kinds of prompts or questions were most helpful?
+    **Response:** Provide the context of my brainstorm and apply any recommended attributes and methods that will need for the application. How can I better understand this part of the code, is there any edge cases that we can over look into? 
 
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
+    **Response:** 
+
 - How did you evaluate or verify what the AI suggested?
 
 ---
@@ -145,7 +150,10 @@ classDiagram
 **a. What you tested**
 
 - What behaviors did you test?
+    **Response:** The mainly tests that handle sorting correctness, recurrence logic, and conflict detection. There are a total of 11 tests in the test file check other cases with an additional edge case to handle. 
+
 - Why were these tests important?
+    **Response:** These will help narrow down possibilities that prevent user error and verify the expected behaviors are working without second guessing the output. 
 
 **b. Confidence**
 
@@ -167,3 +175,4 @@ classDiagram
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+    **Response:** Without a bearbone context of how the structure of designing a system diagram will delay the work needed to ensure the scope of the project is needed. AI was able to assist with improving the application but needs some redirection to ensure it will meet the requirements. Seems that I need to study more about system design, it has been a while. 

@@ -222,3 +222,81 @@ def test_detect_time_conflicts_for_different_pets():
     assert "Warning: Time conflict" in warnings[0]
     assert "Mochi:Walk" in warnings[0]
     assert "Nova:Medication" in warnings[0]
+
+
+def test_sorting_correctness_returns_chronological_order():
+    owner = Customer(customer_id=1, name="Jordan", contact_info="jordan@email.com")
+    pet = Pet(pet_id=101, name="Mochi", species="dog", age=4)
+    owner.add_pet(pet)
+
+    schedule = owner.create_schedule(
+        schedule_date=date(2026, 3, 29),
+        available_windows="08:00-12:00",
+        planned_for=pet,
+    )
+    schedule.add_task(
+        Task(task_id=1, title="Late Walk", duration_minutes=30, priority="medium", time_constraint="10:30")
+    )
+    schedule.add_task(
+        Task(task_id=2, title="Breakfast", duration_minutes=20, priority="high", time_constraint="08:15")
+    )
+    schedule.add_task(
+        Task(task_id=3, title="Medication", duration_minutes=10, priority="high", time_constraint="09:00")
+    )
+
+    schedule.sort_tasks_by_time()
+
+    assert [task.title for task in schedule.tasks] == ["Breakfast", "Medication", "Late Walk"]
+
+
+def test_recurrence_logic_daily_completion_creates_following_day_task():
+    owner = Customer(customer_id=1, name="Jordan", contact_info="jordan@email.com")
+    pet = Pet(pet_id=101, name="Mochi", species="dog", age=4)
+    owner.add_pet(pet)
+
+    schedule = owner.create_schedule(
+        schedule_date=date(2026, 3, 29),
+        available_windows="08:00-12:00",
+        planned_for=pet,
+    )
+    schedule.add_task(
+        Task(
+            task_id=1,
+            title="Daily Medication",
+            duration_minutes=10,
+            priority="high",
+            time_constraint="09:00",
+            recurrence="daily",
+        )
+    )
+
+    next_task = schedule.mark_task_complete(task_id=1)
+
+    assert next_task is not None
+    assert len(schedule.tasks) == 2
+    assert next_task.title == "Daily Medication"
+    assert next_task.scheduled_for == date(2026, 3, 30)
+
+
+def test_conflict_detection_flags_duplicate_times_in_schedule():
+    owner = Customer(customer_id=1, name="Jordan", contact_info="jordan@email.com")
+    pet = Pet(pet_id=101, name="Mochi", species="dog", age=4)
+    owner.add_pet(pet)
+
+    schedule = owner.create_schedule(
+        schedule_date=date(2026, 3, 29),
+        available_windows="08:00-12:00",
+        planned_for=pet,
+    )
+    schedule.add_task(
+        Task(task_id=1, title="Morning Walk", duration_minutes=30, priority="high", time_constraint="09:00")
+    )
+    schedule.add_task(
+        Task(task_id=2, title="Feeding", duration_minutes=20, priority="medium", time_constraint="09:00")
+    )
+
+    warnings = schedule.detect_time_conflicts_with()
+
+    assert len(warnings) == 1
+    assert "Warning: Time conflict" in warnings[0]
+    assert "2026-03-29 09:00" in warnings[0]
